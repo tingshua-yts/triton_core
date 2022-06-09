@@ -2565,7 +2565,7 @@ TRITONSERVER_ServerModelStatistics(
           infer_stats.failure_duration_ns_);
       SetDurationStat(
           metadata, inference_stats, "queue", infer_stats.success_count_,
-          5000);
+          infer_stats.queue_duration_ns_);
       std::cout << std::to_string(infer_stats.queue_duration_ns_) << std::endl;
       LOG_ERROR << std::to_string(infer_stats.queue_duration_ns_);
       SetDurationStat(
