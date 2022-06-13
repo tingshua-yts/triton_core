@@ -83,10 +83,10 @@ InferenceStatsAggregator::UpdateSuccessWithDuration(
 {
   const uint64_t request_duration_ns = request_end_ns - request_start_ns;
   const uint64_t queue_duration_ns = compute_start_ns - queue_start_ns;
-  LOG_ERROR << "Update Success";
-  LOG_ERROR << "Compute Start:" << std::to_string(compute_start_ns);
-  LOG_ERROR << "Queue Start:" << std::to_string(queue_start_ns);
-  LOG_ERROR << "Queue Duration:" << std::to_string(queue_duration_ns);
+  std::cout << "Update Success" << std::endl;
+  std::cout << "Compute Start:" << std::to_string(compute_start_ns) << std::endl;
+  std::cout << "Queue Start:" << std::to_string(queue_start_ns) << std::endl;
+  std::cout << "Queue Duration:" << std::to_string(queue_duration_ns) << std::endl;
 
   std::lock_guard<std::mutex> lock(mu_);
 
@@ -94,9 +94,9 @@ InferenceStatsAggregator::UpdateSuccessWithDuration(
 
   infer_stats_.success_count_++;
   infer_stats_.request_duration_ns_ += request_duration_ns;
-  std::cout << "Old queue duration: " << infer_stats_.queue_duration_ns_;
+  std::cout << "Old queue duration: " << infer_stats_.queue_duration_ns_ << std::endl;
   infer_stats_.queue_duration_ns_ += queue_duration_ns;
-  std::cout << "New queue duration: " << infer_stats_.queue_duration_ns_;
+  std::cout << "New queue duration: " << infer_stats_.queue_duration_ns_ << std::endl;
   infer_stats_.compute_input_duration_ns_ += compute_input_duration_ns;
   infer_stats_.compute_infer_duration_ns_ += compute_infer_duration_ns;
   infer_stats_.compute_output_duration_ns_ += compute_output_duration_ns;
@@ -131,18 +131,18 @@ InferenceStatsAggregator::UpdateSuccessCacheHit(
 {
   const uint64_t request_duration_ns = request_end_ns - request_start_ns;
   const uint64_t queue_duration_ns = cache_lookup_start_ns - queue_start_ns;
-  LOG_ERROR << "Update Cache Success";
-  LOG_ERROR << "Cache Lookup Start:" << std::to_string(cache_lookup_start_ns);
-  LOG_ERROR << "Queue Start:" << std::to_string(queue_start_ns);
-  LOG_ERROR << "Queue Duration:" << std::to_string(queue_duration_ns);
+  std::cout << "Update Cache Success" << std::endl;
+  std::cout << "Cache Lookup Start:" << std::to_string(cache_lookup_start_ns) << std::endl;
+  std::cout << "Queue Start:" << std::to_string(queue_start_ns) << std::endl;
+  std::cout << "Queue Duration:" << std::to_string(queue_duration_ns) << std::endl;
 
   std::lock_guard<std::mutex> lock(mu_);
 
   infer_stats_.success_count_++;
   infer_stats_.request_duration_ns_ += request_duration_ns;
-  std::cout << "Old queue duration: " << infer_stats_.queue_duration_ns_;
+  std::cout << "Old queue duration: " << infer_stats_.queue_duration_ns_ << std::endl;
   infer_stats_.queue_duration_ns_ += queue_duration_ns;
-  std::cout << "New queue duration: " << infer_stats_.queue_duration_ns_;
+  std::cout << "New queue duration: " << infer_stats_.queue_duration_ns_ << std::endl;
   infer_stats_.cache_hit_count_++;
   infer_stats_.cache_hit_lookup_duration_ns_ += cache_hit_lookup_duration_ns;
 
