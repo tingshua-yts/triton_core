@@ -94,9 +94,7 @@ InferenceStatsAggregator::UpdateSuccessWithDuration(
 
   infer_stats_.success_count_++;
   infer_stats_.request_duration_ns_ += request_duration_ns;
-  std::cout << "Old queue duration: " << infer_stats_.queue_duration_ns_ << std::endl;
   infer_stats_.queue_duration_ns_ += queue_duration_ns;
-  std::cout << "New queue duration: " << infer_stats_.queue_duration_ns_ << std::endl;
   infer_stats_.compute_input_duration_ns_ += compute_input_duration_ns;
   infer_stats_.compute_infer_duration_ns_ += compute_infer_duration_ns;
   infer_stats_.compute_output_duration_ns_ += compute_output_duration_ns;
