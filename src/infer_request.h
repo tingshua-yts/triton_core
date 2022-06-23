@@ -576,7 +576,6 @@ class InferenceRequest {
     queue_start_ns_ = std::chrono::duration_cast<std::chrono::nanoseconds>(
                           std::chrono::steady_clock::now().time_since_epoch())
                           .count();
-    std::cout << "*Set queue timestamp: " << std::to_string(queue_start_ns_) << " *" << std::endl;
     return queue_start_ns_;
   }
 
