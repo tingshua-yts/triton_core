@@ -1003,15 +1003,21 @@ InferenceRequest::ReportStatistics(
 
 #ifdef TRITON_ENABLE_TRACING
   if (trace_ != nullptr) {
+    std::cerr << "Tracing started" << std::endl;
     trace_->Report(TRITONSERVER_TRACE_COMPUTE_START, compute_start_ns);
+    std::cerr << "Compute start ns" << std::endl;
     trace_->Report(TRITONSERVER_TRACE_COMPUTE_INPUT_END, compute_input_end_ns);
+    std::cerr << "Compute input ns" << std::endl;
     trace_->Report(
         TRITONSERVER_TRACE_COMPUTE_OUTPUT_START, compute_output_start_ns);
+    std::cerr << "Compute output ns" << std::endl;
     trace_->Report(TRITONSERVER_TRACE_COMPUTE_END, compute_end_ns);
+    std::cerr << "Compute end ns" << std::endl;
   }
 #endif  // TRITON_ENABLE_TRACING
 
   INFER_STATS_DECL_TIMESTAMP(request_end_ns);
+  std::cerr << "After timestamp" << std::endl;
 
   if (success) {
     model_raw_->MutableStatsAggregator()->UpdateSuccess(
