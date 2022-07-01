@@ -576,7 +576,7 @@ class InferenceRequest {
     queue_start_ns_ = std::chrono::duration_cast<std::chrono::nanoseconds>(
                           std::chrono::steady_clock::now().time_since_epoch())
                           .count();
-    std::cout << "Captured queue time " << std::to_string(queue_start_ns) << std::endl;
+    std::cout << "Captured queue time " << std::to_string(queue_start_ns_) << std::endl;
     return queue_start_ns_;
   }
 
@@ -636,7 +636,7 @@ class InferenceRequest {
     request_start_ns_ = std::chrono::duration_cast<std::chrono::nanoseconds>(
                             std::chrono::steady_clock::now().time_since_epoch())
                             .count();
-    std::cout << "Captured request start time " << std::to_string(request_start_ns) << std::endl;
+    std::cout << "Captured request start time " << std::to_string(request_start_ns_) << std::endl;
     return request_start_ns_;
   }
 
