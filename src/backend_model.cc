@@ -808,6 +808,7 @@ TRITONBACKEND_RequestRelease(
     TRITONBACKEND_Request* request, uint32_t release_flags)
 {
   InferenceRequest* tr = reinterpret_cast<InferenceRequest*>(request);
+  LOG_WARNING << "TRITONBACKEND_RequestRelease called for request: " << tr->LogRequest();
   std::unique_ptr<InferenceRequest> ur(tr);
   InferenceRequest::Release(std::move(ur), release_flags);
   return nullptr;  // success

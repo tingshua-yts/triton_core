@@ -310,6 +310,7 @@ void
 InferenceRequest::Release(
     std::unique_ptr<InferenceRequest>&& request, const uint32_t release_flags)
 {
+  LOG_WARNING << "InferenceRequest::Release called for request: " << request->LogRequest();
   // Invoke the release callbacks added internally before releasing the
   // request to user provided callback.
   for (auto it = request->release_callbacks_.rbegin();
