@@ -607,6 +607,9 @@ DynamicBatchScheduler::DelegateResponse(
   request->SetResponseDelegator(
       [this, queue_slot, raw_request_ptr](
           std::unique_ptr<InferenceResponse>&& response, const uint32_t flags) {
+
+        LOG_WARNING << "[dynamic_batch_scheduler] Using raw_request_ptr for request: " << raw_request_ptr->LogRequest();
+
         if (response_cache_enabled_ && raw_request_ptr->CacheKeyIsSet()) {
           // Cache insertion happens here because we need the backend to have
           // computed the inference response first in the case of cache miss
