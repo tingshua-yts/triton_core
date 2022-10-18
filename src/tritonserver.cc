@@ -1488,6 +1488,8 @@ TRITONSERVER_InferenceRequestDelete(
   tc::InferenceRequest* lrequest =
       reinterpret_cast<tc::InferenceRequest*>(inference_request);
   delete lrequest;
+  // TODO: debug
+  lrequest = nullptr;
   return nullptr;  // Success
 }
 
