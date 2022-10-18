@@ -54,11 +54,13 @@ class ScopedTimer {
     switch (type_) {
       case ScopedTimerType::LOOKUP:
         request_.CaptureCacheLookupEndNs();
+        // TODO: race condition updating reference to class member?
         duration_ +=
             request_.CacheLookupEndNs() - request_.CacheLookupStartNs();
         break;
       case ScopedTimerType::INSERTION:
         request_.CaptureCacheInsertionEndNs();
+        // TODO: race condition updating reference to class member?
         duration_ +=
             request_.CacheInsertionEndNs() - request_.CacheInsertionStartNs();
         break;

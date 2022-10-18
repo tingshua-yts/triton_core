@@ -608,6 +608,12 @@ DynamicBatchScheduler::DelegateResponse(
       [this, queue_slot, raw_request_ptr](
           std::unique_ptr<InferenceResponse>&& response, const uint32_t flags) {
 
+        if (this == nullptr) {
+          LOG_ERROR << "~~~~~ REQUEST HAS BEEN RELEASED/INVALIDATED!!!";
+        } else {
+          LOG_WARNING << "~~~~~ request unique_ptr still valid?";
+        }
+
         LOG_WARNING << "[dynamic_batch_scheduler] Using raw_request_ptr for request: " << raw_request_ptr->LogRequest();
 
         if (response_cache_enabled_ && raw_request_ptr->CacheKeyIsSet()) {
