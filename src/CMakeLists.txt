@@ -96,6 +96,14 @@ if(${TRITON_ENABLE_S3})
   message(STATUS "Using aws-sdk-cpp ${AWSSDK_VERSION}")
 endif()
 
+if (NOT WIN32)
+  # Gperftools
+  #
+  link_directories(/usr/local/lib)
+  LIST(APPEND CMAKE_MODULE_PATH "${repo-common_SOURCE_DIR}/cmake")
+  find_package(Gperftools REQUIRED)
+endif()
+
 configure_file(libtritonserver.ldscript libtritonserver.ldscript COPYONLY)
 
 set(
@@ -267,6 +275,13 @@ target_include_directories(
     ${Boost_INCLUDE_DIRS}
     ${Protobuf_INCLUDE_DIRS}
 )
+
+if (NOT WIN32)
+  target_include_directories(
+    triton-core
+    PRIVATE ${GPERFTOOLS_INCLUDE_DIR}
+  )
+endif()
 
 if(${TRITON_ENABLE_GPU})
   target_include_directories(
