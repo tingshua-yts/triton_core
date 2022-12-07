@@ -141,6 +141,7 @@ InferenceServer::Init()
     return status;
   }
 
+  // 创建 TritonBackendManager
   status = TritonBackendManager::Create(&backend_manager_);
   if (!status.IsOk()) {
     ready_state_ = ServerReadyState::SERVER_FAILED_TO_INITIALIZE;
@@ -148,8 +149,7 @@ InferenceServer::Init()
   }
 
   if (buffer_manager_thread_count_ > 0) {
-    status = CommonErrorToStatus(triton::common::AsyncWorkQueue::Initialize(
-        buffer_manager_thread_count_));
+    status = CommonErrorToStatus(triton::common::AsyncWorkQueue::Initialize(buffer_manager_thread_count_));
     if (!status.IsOk()) {
       ready_state_ = ServerReadyState::SERVER_FAILED_TO_INITIALIZE;
       return status;
@@ -157,12 +157,10 @@ InferenceServer::Init()
   }
 
   std::unique_ptr<RateLimiter> local_rate_limiter;
-  bool ignore_resources_and_priority =
-      (rate_limit_mode_ == RateLimitMode::RL_OFF);
+  bool ignore_resources_and_priority = (rate_limit_mode_ == RateLimitMode::RL_OFF);
 
-  status = RateLimiter::Create(
-      ignore_resources_and_priority, rate_limit_resource_map_,
-      &local_rate_limiter);
+  // 创建 RateLimiter
+  status = RateLimiter::Create( ignore_resources_and_priority, rate_limit_resource_map_,  &local_rate_limiter);
   rate_limiter_ = std::move(local_rate_limiter);
   if (!status.IsOk()) {
     ready_state_ = ServerReadyState::SERVER_FAILED_TO_INITIALIZE;
@@ -170,16 +168,18 @@ InferenceServer::Init()
   }
 
   PinnedMemoryManager::Options options(pinned_memory_pool_size_);
+  // 创建static std::unique_ptr<PinnedMemoryManager> instance_, 是PinnedMemoryManager的内部static 全局一个
+  // YTS:TODO
   status = PinnedMemoryManager::Create(options);
   if (!status.IsOk()) {
     ready_state_ = ServerReadyState::SERVER_FAILED_TO_INITIALIZE;
     return status;
   }
 
+  // 创建 response cache
   if (response_cache_byte_size_ > 0) {
     std::unique_ptr<RequestResponseCache> local_response_cache;
-    status = RequestResponseCache::Create(
-        response_cache_byte_size_, &local_response_cache);
+    status = RequestResponseCache::Create(response_cache_byte_size_, &local_response_cache);
     if (!status.IsOk()) {
       ready_state_ = ServerReadyState::SERVER_FAILED_TO_INITIALIZE;
       return status;
@@ -204,6 +204,7 @@ InferenceServer::Init()
 
   CudaMemoryManager::Options cuda_options(
       min_supported_compute_capability_, cuda_memory_pool_size_);
+  // 创建static std::unique_ptr<CudaMemoryManager> instance_, 全局唯一
   status = CudaMemoryManager::Create(cuda_options);
   // If CUDA memory manager can't be created, just log error as the
   // server can still function properly
@@ -221,11 +222,12 @@ InferenceServer::Init()
   // Create the model manager for the repository. Unless model control
   // is disabled, all models are eagerly loaded when the manager is created.
   bool polling_enabled = (model_control_mode_ == ModelControlMode::MODE_POLL);
-  bool model_control_enabled =
-      (model_control_mode_ == ModelControlMode::MODE_EXPLICIT);
+  bool model_control_enabled = (model_control_mode_ == ModelControlMode::MODE_EXPLICIT);
   const ModelLifeCycleOptions life_cycle_options(
       min_supported_compute_capability_, backend_cmdline_config_map_,
       host_policy_map_, model_load_thread_count_);
+
+  // 创建model_repository_manager_
   status = ModelRepositoryManager::Create(
       this, version_, model_repository_paths_, startup_models_,
       strict_model_config_, polling_enabled, model_control_enabled,

@@ -293,6 +293,7 @@ class RateLimiter {
   std::vector<std::shared_ptr<Payload>> payload_bucket_;
   std::deque<std::shared_ptr<Payload>> payloads_in_use_;
 
+ // 存储所有的请求信息, Payload为一个reqeust的内容
   struct PayloadQueue {
     explicit PayloadQueue(size_t max_batch_size, uint64_t max_queue_delay_ns)
     {

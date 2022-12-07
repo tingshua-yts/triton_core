@@ -2083,6 +2083,7 @@ TRITONAPI_DECLSPEC TRITONSERVER_Error*
 TRITONSERVER_ServerNew(
     TRITONSERVER_Server** server, TRITONSERVER_ServerOptions* options)
 {
+  // 1) 创建inference server和loptions
   tc::InferenceServer* lserver = new tc::InferenceServer();
   TritonServerOptions* loptions =
       reinterpret_cast<TritonServerOptions*>(options);
@@ -2097,6 +2098,7 @@ TRITONSERVER_ServerNew(
   }
 #endif  // TRITON_ENABLE_METRICS
 
+  // 2)配置lserver
   lserver->SetId(loptions->ServerId());
   lserver->SetModelRepositoryPaths(loptions->ModelRepositoryPaths());
   lserver->SetModelControlMode(loptions->ModelControlMode());

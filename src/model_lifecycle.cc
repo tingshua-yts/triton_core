@@ -428,14 +428,16 @@ ModelLifeCycle::AsyncLoad(
   LOG_VERBOSE(2) << "AsyncLoad() '" << model_name << "'";
 
   std::lock_guard<std::mutex> map_lock(map_mtx_);
+
+  // 找到当前模型对应的VersionMap
   auto it = map_.find(model_name);
   if (it == map_.end()) {
     it = map_.emplace(std::make_pair(model_name, VersionMap())).first;
   }
 
+  // 获得当前模型有多少个版本
   std::set<int64_t> versions;
-  RETURN_IF_ERROR(
-      VersionsToLoad(model_path, model_name, model_config, &versions));
+  RETURN_IF_ERROR(VersionsToLoad(model_path, model_name, model_config, &versions));
   if (versions.empty()) {
     return Status(
         Status::Code::INVALID_ARG,
@@ -451,9 +453,10 @@ ModelLifeCycle::AsyncLoad(
           .count();
   std::shared_ptr<LoadTracker> load_tracker(
       new LoadTracker(versions.size(), now_ns));
+
+  // 分别加载当前model的每一个version
   for (const auto& version : versions) {
-    std::unique_ptr<ModelInfo> linfo(
-        new ModelInfo(model_path, model_config, now_ns));
+    std::unique_ptr<ModelInfo> linfo(new ModelInfo(model_path, model_config, now_ns));
     ModelInfo* model_info = linfo.get();
 
     LOG_INFO << "loading: " << model_name << ":" << version;
@@ -461,9 +464,8 @@ ModelLifeCycle::AsyncLoad(
     model_info->state_reason_.clear();
     model_info->agent_model_list_ = agent_model_list;
 
-    auto res = it->second.emplace(
-        std::make_pair(version, std::unique_ptr<ModelInfo>()));
-    if (res.second) {
+    auto res = it->second.emplace(std::make_pair(version, std::unique_ptr<ModelInfo>()));
+    if (res.second) { // 上面的emplace成功了，说没map中没有对应版本的version处于serve状态
       res.first->second = std::move(linfo);
     } else {
       // There is already a record of this model version. Check if the version
@@ -491,6 +493,7 @@ ModelLifeCycle::AsyncLoad(
     }
 
     // Load model asynchronously via thread pool
+    // 通过线程池来执行模型的加载
     load_pool_->Enqueue([this, model_name, version, model_info, OnComplete,
                          load_tracker, is_config_provided]() {
       CreateModel(model_name, version, model_info, is_config_provided);
@@ -513,6 +516,7 @@ ModelLifeCycle::CreateModel(
   Status status;
   std::unique_ptr<Model> is;
 
+  // 加载模型
   // If 'backend' is specified in the config then use the new triton
   // backend.
   if (!model_config.backend().empty()) {
@@ -563,6 +567,7 @@ ModelLifeCycle::CreateModel(
     }
   }
 
+  // 记录model info
   std::lock_guard<std::mutex> lock(model_info->mtx_);
   if (status.IsOk()) {
     // [FIXME] better way to manage agent model lifecycle

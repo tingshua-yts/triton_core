@@ -192,10 +192,14 @@ TritonModelInstance::CreateInstances(
   std::map<uint32_t, std::shared_ptr<TritonBackendThread>> device_to_thread_map;
 
   for (const auto& group : model_config.instance_group()) {
+    //@@     For TensorRT models containing multiple optimization profile, this
+    //@@     parameter specifies a set of optimization profiles available to this
+    //@@     instance group.
     std::vector<std::string> profile_names;
     for (const auto& profile_name : group.profile()) {
       profile_names.push_back(profile_name);
     }
+
     std::vector<SecondaryDevice> secondary_devices;
     for (const auto& secondary_device : group.secondary_devices()) {
       secondary_devices.emplace_back(
@@ -204,6 +208,8 @@ TritonModelInstance::CreateInstances(
                   secondary_device.kind()),
           secondary_device.device_id());
     }
+
+    // 处理group中的每一个instance
     for (int32_t c = 0; c < group.count(); ++c) {
       std::string instance_name{group.count() > 1
                                     ? group.name() + "_" + std::to_string(c)
@@ -219,7 +225,12 @@ TritonModelInstance::CreateInstances(
             TRITONSERVER_INSTANCEGROUPKIND_CPU, 0 /* device_id */,
             &group.rate_limiter());
       } else if (group.kind() == inference::ModelInstanceGroup::KIND_GPU) {
+        // instance_setting的个数为group.count() * group.gpus()
         for (const int32_t device_id : group.gpus()) {
+          //@@     The host policy name that the instance to be associated with.
+          //@@     The default value is set to reflect the device kind of the instance,
+          //@@     for instance, KIND_CPU is "cpu", KIND_MODEL is "model" and
+          //@@     KIND_GPU is "gpu_<gpu_id>".
           instance_setting.emplace_back(
               group.host_policy().empty() ? ("gpu_" + std::to_string(device_id))
                                           : group.host_policy(),
@@ -237,6 +248,7 @@ TritonModelInstance::CreateInstances(
             std::string("instance_group kind ") +
                 ModelInstanceGroup_Kind_Name(group.kind()) + " not supported");
       }
+      // instance_setting 是对应每一个要创建instance的setting信息
       for (const auto is : instance_setting) {
         const auto& kind = std::get<1>(is);
         const auto& id = std::get<2>(is);
@@ -267,8 +279,7 @@ TritonModelInstance::CreateInstances(
           size_t free, total;
           double memory_limit;
           RETURN_IF_ERROR(GetDeviceMemoryInfo(id, &free, &total));
-          RETURN_IF_ERROR(BackendConfigurationModelLoadGpuFraction(
-              backend_cmdline_config_map, id, &memory_limit));
+          RETURN_IF_ERROR(BackendConfigurationModelLoadGpuFraction( backend_cmdline_config_map, id, &memory_limit));
           const size_t allow = total * memory_limit;
           const size_t used = total - free;
           if (used > allow) {
@@ -301,26 +312,25 @@ TritonModelInstance::CreateInstance(
         device_to_thread_map,
     const std::vector<SecondaryDevice>& secondary_devices)
 {
+  // 配置TritonModelInstance需要的信息
   // Create the JSON representation of the backend configuration.
-  triton::common::TritonJson::Value host_policy_json(
-      triton::common::TritonJson::ValueType::OBJECT);
-  triton::common::TritonJson::Value policy_setting_json(
-      host_policy_json, triton::common::TritonJson::ValueType::OBJECT);
+  triton::common::TritonJson::Value host_policy_json(triton::common::TritonJson::ValueType::OBJECT);
+  triton::common::TritonJson::Value policy_setting_json(host_policy_json, triton::common::TritonJson::ValueType::OBJECT);
   for (const auto& pr : host_policy) {
     RETURN_IF_ERROR(policy_setting_json.AddString(pr.first.c_str(), pr.second));
   }
 
-  RETURN_IF_ERROR(host_policy_json.Add(
-      host_policy_name.c_str(), std::move(policy_setting_json)));
+  RETURN_IF_ERROR(host_policy_json.Add(host_policy_name.c_str(), std::move(policy_setting_json)));
   TritonServerMessage host_policy_message(host_policy_json);
 
+  // 创建TritonModelInstance
   std::unique_ptr<TritonModelInstance> local_instance(new TritonModelInstance(
       model, name, index, kind, device_id, profile_names, passive, host_policy,
       host_policy_message, secondary_devices));
 
-  TRITONBACKEND_ModelInstance* triton_instance =
-      reinterpret_cast<TRITONBACKEND_ModelInstance*>(local_instance.get());
+  TRITONBACKEND_ModelInstance* triton_instance = reinterpret_cast<TRITONBACKEND_ModelInstance*>(local_instance.get());
 
+  // 调用Backend的model instance init function
   // Instance initialization is optional... We must set set shared
   // library path to point to the backend directory in case the
   // backend library attempts to load additional shared libaries.
@@ -329,19 +339,17 @@ TritonModelInstance::CreateInstance(
     RETURN_IF_ERROR(SharedLibrary::Acquire(&slib));
     RETURN_IF_ERROR(slib->SetLibraryDirectory(model->Backend()->Directory()));
 
-    TRITONSERVER_Error* err =
-        model->Backend()->ModelInstanceInitFn()(triton_instance);
+    TRITONSERVER_Error* err = model->Backend()->ModelInstanceInitFn()(triton_instance);
 
     RETURN_IF_ERROR(slib->ResetLibraryDirectory());
     RETURN_IF_TRITONSERVER_ERROR(err);
   }
 
+
   if (!passive) {
     RETURN_IF_ERROR(local_instance->GenerateWarmupData());
-    RETURN_IF_ERROR(model->Server()->GetRateLimiter()->RegisterModelInstance(
-        local_instance.get(), rate_limiter_config));
-    RETURN_IF_ERROR(local_instance->SetBackendThread(
-        kind, device_id, device_blocking, device_to_thread_map));
+    RETURN_IF_ERROR(model->Server()->GetRateLimiter()->RegisterModelInstance(local_instance.get(), rate_limiter_config));
+    RETURN_IF_ERROR(local_instance->SetBackendThread(kind, device_id, device_blocking, device_to_thread_map));
   }
 
   RETURN_IF_ERROR(model->AddInstance(std::move(local_instance), passive));
@@ -357,6 +365,7 @@ TritonModelInstance::SetBackendThread(
         device_to_thread_map)
 {
   if (device_blocking && (kind == TRITONSERVER_INSTANCEGROUPKIND_GPU)) {
+    // 判断device_id上是否已经具有了thread
     auto thread_it = device_to_thread_map->find(device_id);
     if (thread_it != device_to_thread_map->end()) {
       LOG_VERBOSE(1) << "Using already started backend thread for " << Name()
@@ -365,12 +374,13 @@ TritonModelInstance::SetBackendThread(
     }
   }
   if (triton_backend_thread_.get() == nullptr) {
+    // 如果没有对应的thread，则进行创建
     std::unique_ptr<TritonBackendThread> local_backend_thread;
-    RETURN_IF_ERROR(TritonBackendThread::CreateBackendThread(
-        Name(), this, 0 /* nice */, device_id, &local_backend_thread));
+    RETURN_IF_ERROR(TritonBackendThread::CreateBackendThread( Name(), this, 0 /* nice */, device_id, &local_backend_thread));
     triton_backend_thread_ = std::move(local_backend_thread);
     device_to_thread_map->insert({device_id, triton_backend_thread_});
   } else {
+    // 如果已经有了thread，则直接将model instal添加进去
     triton_backend_thread_->AddModelInstance(this);
   }
   RETURN_IF_ERROR(triton_backend_thread_->InitAndWarmUpModelInstance(this));
@@ -690,11 +700,13 @@ TritonModelInstance::TritonBackendThread::CreateBackendThread(
     const int32_t device_id,
     std::unique_ptr<TritonBackendThread>* triton_backend_thread)
 {
-  TritonBackendThread* raw_triton_backend_thread =
-      new TritonBackendThread(name, model_instance->Model());
+  // 创建TritonBackendThread
+  TritonBackendThread* raw_triton_backend_thread = new TritonBackendThread(name, model_instance->Model());
   std::unique_ptr<TritonBackendThread> runner(raw_triton_backend_thread);
 
+  // 这是TritonModelInstance
   runner->AddModelInstance(model_instance);
+  // 创建真实Thread
   runner->backend_thread_ =
       std::thread([raw_triton_backend_thread, nice, device_id]() {
         raw_triton_backend_thread->BackendThread(nice, device_id);
@@ -777,8 +789,7 @@ TritonModelInstance::TritonBackendThread::BackendThread(
   bool should_exit = false;
   while (!should_exit) {
     std::shared_ptr<Payload> payload;
-    model_->Server()->GetRateLimiter()->DequeuePayload(
-        model_instances_, &payload);
+    model_->Server()->GetRateLimiter()->DequeuePayload(model_instances_, &payload);
     NVTX_RANGE(nvtx_, "BackendThread " + name_);
     payload->Execute(&should_exit);
     model_instances_.push_back(payload->GetInstance());

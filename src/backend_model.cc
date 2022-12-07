@@ -82,21 +82,17 @@ TritonModel::Create(
 
   // Localize paths in backend model config
   // [FIXME] Remove once a more permanent solution is implemented (DLIS-4211)
-  RETURN_IF_ERROR(LocalizePythonBackendExecutionEnvironmentPath(
-      model_path, &model_config, &localized_model_dir));
+  RETURN_IF_ERROR(LocalizePythonBackendExecutionEnvironmentPath(model_path, &model_config, &localized_model_dir));
 
   // Get some internal configuration values needed for initialization.
   std::string backend_dir;
-  RETURN_IF_ERROR(BackendConfigurationGlobalBackendsDirectory(
-      backend_cmdline_config_map, &backend_dir));
+  RETURN_IF_ERROR(BackendConfigurationGlobalBackendsDirectory(backend_cmdline_config_map, &backend_dir));
 
   bool auto_complete_config = false;
-  RETURN_IF_ERROR(BackendConfigurationAutoCompleteConfig(
-      backend_cmdline_config_map, &auto_complete_config));
+  RETURN_IF_ERROR(BackendConfigurationAutoCompleteConfig(backend_cmdline_config_map, &auto_complete_config));
 
   double min_compute_capability = 0;
-  RETURN_IF_ERROR(BackendConfigurationMinComputeCapability(
-      backend_cmdline_config_map, &min_compute_capability));
+  RETURN_IF_ERROR(BackendConfigurationMinComputeCapability(backend_cmdline_config_map, &min_compute_capability));
 
   std::string specialized_backend_name;
   RETURN_IF_ERROR(BackendConfigurationSpecializeBackendName(
@@ -110,12 +106,9 @@ TritonModel::Create(
   // Get the path to the backend shared library. Search path is
   // version directory, model directory, global backend directory.
   const auto localized_model_path = localized_model_dir->Path();
-  const auto version_path =
-      JoinPath({localized_model_path, std::to_string(version)});
-  const std::string global_path =
-      JoinPath({backend_dir, specialized_backend_name});
-  const std::vector<std::string> search_paths = {
-      version_path, localized_model_path, global_path};
+  const auto version_path =JoinPath({localized_model_path, std::to_string(version)});
+  const std::string global_path =JoinPath({backend_dir, specialized_backend_name});
+  const std::vector<std::string> search_paths = { version_path, localized_model_path, global_path};
 
   std::string backend_libdir;
   std::string backend_libpath;
@@ -138,6 +131,7 @@ TritonModel::Create(
                                        model_path + ", " + global_path);
   }
 
+  // 创建backend
   // Resolve the global backend configuration with the specific backend
   // configuration
   triton::common::BackendCmdlineConfig config;
@@ -161,6 +155,7 @@ TritonModel::Create(
         ValidateInstanceGroup(model_config, min_compute_capability));
   }
 
+  // 创建TritonModel
   // Create and initialize the model.
   std::unique_ptr<TritonModel> local_model(new TritonModel(
       server, localized_model_dir, backend, min_compute_capability, version,
@@ -168,6 +163,7 @@ TritonModel::Create(
 
   TritonModel* raw_local_model = local_model.get();
 
+  // 调用backend的model init函数
   // Model initialization is optional... The TRITONBACKEND_Model
   // object is this TritonModel object. We must set set shared library
   // path to point to the backend directory in case the backend
@@ -197,7 +193,7 @@ TritonModel::Create(
 
   bool device_blocking = false;
   if (local_model->backend_->ExecutionPolicy() ==
-      TRITONBACKEND_EXECUTION_DEVICE_BLOCKING) {
+     TRITONBACKEND_EXECUTION_DEVICE_BLOCKING) {
     if (model_config.has_sequence_batching()) {
       LOG_INFO << "Overriding execution policy to "
                   "\"TRITONBACKEND_EXECUTION_BLOCKING\" for sequence model \""
@@ -207,6 +203,7 @@ TritonModel::Create(
     }
   }
 
+  // 创建model instance
   // Create and initialize the model instances for this model.
   RETURN_IF_ERROR(TritonModelInstance::CreateInstances(
       raw_local_model, backend_cmdline_config_map, host_policy_map,

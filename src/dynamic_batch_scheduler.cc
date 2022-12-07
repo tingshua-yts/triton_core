@@ -194,12 +194,12 @@ DynamicBatchScheduler::Enqueue(std::unique_ptr<InferenceRequest>& request)
   // the dynamic batcher.
   request->CaptureBatcherStartNs();
 
+  // cache 查询
   std::unique_ptr<InferenceResponse> cached_response;
-
   if (response_cache_enabled_) {
     CacheLookUp(request, cached_response);
   }
-
+  // cache命中的情况
   if (cached_response != nullptr) {
     // If there was a cache hit then try sending the cached response
     // and release the request.
@@ -218,6 +218,7 @@ DynamicBatchScheduler::Enqueue(std::unique_ptr<InferenceRequest>& request)
     return Status::Success;
   }
 
+  // 没有开启dynamic batch的情况
   if (!dynamic_batching_enabled_) {
     if (preserve_ordering_ || response_cache_enabled_) {
       DelegateResponse(request);
@@ -258,7 +259,7 @@ DynamicBatchScheduler::Enqueue(std::unique_ptr<InferenceRequest>& request)
              (queued_batch_size_ >= next_preferred_batch_size_));
       }
     }
-
+    // YTS:TODO 唤醒的谁
     if (wake_batcher) {
       cv_.notify_one();
     }

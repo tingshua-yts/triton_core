@@ -54,28 +54,27 @@ TritonBackend::Create(
     const triton::common::BackendCmdlineConfig& backend_cmdline_config,
     std::shared_ptr<TritonBackend>* backend)
 {
+  // 1)创建backend config
   // Create the JSON representation of the backend configuration.
-  triton::common::TritonJson::Value backend_config_json(
-      triton::common::TritonJson::ValueType::OBJECT);
+  triton::common::TritonJson::Value backend_config_json(triton::common::TritonJson::ValueType::OBJECT);
   if (!backend_cmdline_config.empty()) {
-    triton::common::TritonJson::Value cmdline_json(
-        backend_config_json, triton::common::TritonJson::ValueType::OBJECT);
+    triton::common::TritonJson::Value cmdline_json(、backend_config_json, triton::common::TritonJson::ValueType::OBJECT);
     for (const auto& pr : backend_cmdline_config) {
       RETURN_IF_ERROR(cmdline_json.AddString(pr.first.c_str(), pr.second));
     }
 
-    RETURN_IF_ERROR(
-        backend_config_json.Add("cmdline", std::move(cmdline_json)));
+    RETURN_IF_ERROR(backend_config_json.Add("cmdline", std::move(cmdline_json)));
   }
 
   TritonServerMessage backend_config(backend_config_json);
 
-  auto local_backend = std::shared_ptr<TritonBackend>(
-      new TritonBackend(name, dir, libpath, backend_config));
+ // 2) 创建TritonBackend，并进行load library
+  auto local_backend = std::shared_ptr<TritonBackend>( new TritonBackend(name, dir, libpath, backend_config));
 
   // Load the library and initialize all the entrypoints
   RETURN_IF_ERROR(local_backend->LoadBackendLibrary());
 
+  // 3) 判断是否有初始化函数，如果有则调用
   // Backend initialization is optional... The TRITONBACKEND_Backend
   // object is this TritonBackend object. We must set set shared
   // library path to point to the backend directory in case the

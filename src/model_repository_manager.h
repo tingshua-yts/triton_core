@@ -204,8 +204,7 @@ class ModelRepositoryManager {
   struct ModelInfo;
 
   // Map from model name to information about the model.
-  using ModelInfoMap =
-      std::unordered_map<std::string, std::unique_ptr<ModelInfo>>;
+  using ModelInfoMap = std::unordered_map<std::string, std::unique_ptr<ModelInfo>>;
   // Dependency between models <present nodes, missing nodes>, where each of
   // the two nodes maps model name -> DependencyNode.
   // Nodes from both present and missing nodes forms the complete dependency

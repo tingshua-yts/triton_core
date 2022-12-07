@@ -134,10 +134,12 @@ Status
 RateLimiter::EnqueuePayload(
     const TritonModel* model, std::shared_ptr<Payload> payload)
 {
+  // pinstance is model instance
   auto pinstance = payload->GetInstance();
   if (payload_queues_.find(model) == payload_queues_.end()) {
     LOG_INFO << "Should not print this ";
   }
+  // 找到该模型的所有请求内容
   PayloadQueue* payload_queue = payload_queues_[model].get();
   {
     std::lock_guard<std::mutex> lk(payload_queue->mu_);

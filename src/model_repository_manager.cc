@@ -345,9 +345,9 @@ ModelRepositoryManager::Create(
   }
 
   std::unique_ptr<ModelLifeCycle> life_cycle;
-  RETURN_IF_ERROR(
-      ModelLifeCycle::Create(server, life_cycle_options, &life_cycle));
+  RETURN_IF_ERROR( ModelLifeCycle::Create(server, life_cycle_options, &life_cycle));
 
+  // 1) 创建ModelRepositoryManager
   // Not setting the smart pointer directly to simplify clean up
   std::unique_ptr<ModelRepositoryManager> local_manager(
       new ModelRepositoryManager(
@@ -356,12 +356,12 @@ ModelRepositoryManager::Create(
           std::move(life_cycle)));
   *model_repository_manager = std::move(local_manager);
 
+  // 2) 根据配置信息load model
   // Support loading all models on startup in explicit model control mode with
   // special startup_model name "*". This does not imply support for pattern
   // matching in model names.
   bool load_all_models_on_startup = false;
-  if ((startup_models.find("*") != startup_models.end()) &&
-      model_control_enabled) {
+  if ((startup_models.find("*") != startup_models.end()) &&  model_control_enabled) {
     if (startup_models.size() > 1) {
       return Status(
           Status::Code::INVALID_ARG,
@@ -376,31 +376,26 @@ ModelRepositoryManager::Create(
   if (!model_control_enabled || load_all_models_on_startup) {
     // only error happens before model load / unload will be return
     // model loading / unloading error will be printed but ignored
-    RETURN_IF_ERROR(
-        (*model_repository_manager)->PollAndUpdateInternal(&all_models_polled));
+    RETURN_IF_ERROR((*model_repository_manager)->PollAndUpdateInternal(&all_models_polled));
   } else {
     // Load each specified startup_model
-    std::unordered_map<std::string, std::vector<const InferenceParameter*>>
-        models;
+    std::unordered_map<std::string, std::vector<const InferenceParameter*>>  models;
     for (const auto& model_name : startup_models) {
       models[model_name];
     }
     RETURN_IF_ERROR(
-        (*model_repository_manager)
-            ->LoadUnloadModels(
-                models, ActionType::LOAD, false, &all_models_polled));
+        (*model_repository_manager)->LoadUnloadModels(models, ActionType::LOAD, false, &all_models_polled));
   }
 
 
   if (!all_models_polled) {
     return Status(Status::Code::INTERNAL, "failed to load all models");
   }
+  // 3）处理model load失败的请情况
   // Some models may failed to be loaded after model manager is created,
   // return proper error and let function caller decide whether to proceed.
   for (const auto& model : (*model_repository_manager)->infos_) {
-    const auto version_states =
-        (*model_repository_manager)
-            ->model_life_cycle_->VersionStates(model.first);
+    const auto version_states =  (*model_repository_manager) ->model_life_cycle_->VersionStates(model.first);
     // Return general error message, detail of each model's loading state
     // is logged separately.
     if (version_states.empty()) {
@@ -446,6 +441,7 @@ ModelRepositoryManager::PollAndUpdateInternal(bool* all_models_polled)
     // which we read the model configuration.
     std::unordered_map<std::string, std::vector<const InferenceParameter*>>
         subdirs;
+    // 传看model replica和当前的记录有哪些区别，分别记录到added/deleted/modified中
     RETURN_IF_ERROR(Poll(
         subdirs, &added, &deleted, &modified, &unmodified, &new_infos,
         all_models_polled));
@@ -479,6 +475,7 @@ ModelRepositoryManager::PollAndUpdateInternal(bool* all_models_polled)
     CopyDependencyGraph(&new_dependency_graph);
   }
 
+  // 处理delete的情况
   for (const auto& name : deleted) {
     model_life_cycle_->AsyncUnload(name);
   }
@@ -488,6 +485,8 @@ ModelRepositoryManager::PollAndUpdateInternal(bool* all_models_polled)
   UpdateTransition(&new_dependency_graph, deleted, false);
   UpdateTransition(&new_dependency_graph, modified, false);
   // model loading / unloading error will be printed but ignored
+
+  // 处理add和modify情况
   LoadModelByDependency(new_infos, new_dependency_graph);
 
   // mark in transition models as completed
@@ -640,8 +639,7 @@ ModelRepositoryManager::LoadUnloadModel(
 
 Status
 ModelRepositoryManager::LoadUnloadModels(
-    const std::unordered_map<
-        std::string, std::vector<const InferenceParameter*>>& models,
+    const std::unordered_map<std::string, std::vector<const InferenceParameter*>>& models,
     const ActionType type, const bool unload_dependents,
     bool* all_models_polled)
 {
@@ -657,8 +655,7 @@ ModelRepositoryManager::LoadUnloadModels(
   DependencyGraph new_dependency_graph;
 
   // Update ModelInfo related to file system accordingly
-  std::set<std::string> added, deleted, modified, unmodified,
-      deleted_dependents;
+  std::set<std::string> added, deleted, modified, unmodified, deleted_dependents;
   {
     std::lock_guard<std::mutex> lock(mu_);
 
@@ -682,8 +679,7 @@ ModelRepositoryManager::LoadUnloadModels(
 #endif  // TRITON_ENABLE_ENSEMBLE
       while (!current_models.empty()) {
         bool polled = true;
-        RETURN_IF_ERROR(Poll(
-            current_models, &added, &deleted, &modified, &unmodified,
+        RETURN_IF_ERROR(Poll(current_models, &added, &deleted, &modified, &unmodified,
             &new_infos, &polled));
         *all_models_polled &= polled;
 

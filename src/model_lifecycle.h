@@ -306,7 +306,9 @@ class ModelLifeCycle {
   // Mutex for 'map_' and 'background_models_'
   std::mutex map_mtx_;
 
+  //key为version， value为该version对应的modelinfo
   using VersionMap = std::map<int64_t, std::unique_ptr<ModelInfo>>;
+  // key is model name，value为其对应的所有版本
   using ModelMap = std::map<std::string, VersionMap>;
   ModelMap map_;
   // Models that are being loaded / unloaded in background
