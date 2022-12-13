@@ -124,6 +124,7 @@ RateLimiter::PayloadSlotAvailable(const TritonModel* model)
   PayloadQueue* payload_queue = payload_queues_[model].get();
   {
     std::lock_guard<std::mutex> lk(payload_queue->mu_);
+    // 这个判断不理解
     result = payload_queue->queue_->Size() <
              2 * payload_queue->specific_queues_.size();
   }
@@ -145,11 +146,14 @@ RateLimiter::EnqueuePayload(
     std::lock_guard<std::mutex> lk(payload_queue->mu_);
     payload->SetState(Payload::State::REQUESTED);
     if (ignore_resources_and_priority_) {
+      // 没有开启限流的场景，下面函数将payload放入到payload_queue中
       SchedulePayload(pinstance, payload_queue, payload);
     }
   }
   if (ignore_resources_and_priority_) {
+    // 没有开启限流的场景
     if (pinstance == nullptr) {
+      // 触发一个正在等待payload的model instance thread
       payload_queue->cv_.notify_one();
     } else {
       payload_queue->cv_.notify_all();
@@ -183,20 +187,25 @@ RateLimiter::DequeuePayload(
   if (payload_queues_.find(instances[0]->Model()) == payload_queues_.end()) {
     LOG_INFO << "Should not print this ";
   }
+  // 拿到当前模型对应的所有payload
   PayloadQueue* payload_queue = payload_queues_[instances[0]->Model()].get();
   std::vector<std::shared_ptr<Payload>> merged_payloads;
   size_t instance_index = std::numeric_limits<std::size_t>::max();
   {
     std::unique_lock<std::mutex> lk(payload_queue->mu_);
+    // 等待payload中有数据
     payload_queue->cv_.wait(lk, [&instances, &instance_index, payload_queue]() {
       bool empty = payload_queue->queue_->Empty();
       if (empty) {
+        //通用队列内容为空
         instance_index = 0;
         for (const auto instance : instances) {
           empty = payload_queue->specific_queues_[instance]->Empty();
           if (empty) {
+            // spec queue也为空
             instance_index++;
           } else {
+            // spec queue不为空
             break;
           }
         }
@@ -204,12 +213,14 @@ RateLimiter::DequeuePayload(
       return !empty;
     });
     if (instance_index < instances.size()) {
+      // 处理payload来自spec queue的场景
       TritonModelInstance* instance = instances[instance_index];
       if (!payload_queue->specific_queues_[instance]->Empty()) {
         payload_queue->specific_queues_[instance]->Dequeue(
             payload, &merged_payloads);
       }
     } else {
+      // 处理payload来自通用queue的场景
       payload_queue->queue_->Dequeue(payload, &merged_payloads);
     }
   }
@@ -355,6 +366,7 @@ RateLimiter::SchedulePayload(
     TritonModelInstance* tmi, PayloadQueue* payload_queue,
     const std::shared_ptr<Payload>& payload)
 {
+  // payload_queue存储了当前version+model维度的所有payload
   if (tmi == nullptr) {
     payload_queue->queue_->Enqueue(payload);
   } else {

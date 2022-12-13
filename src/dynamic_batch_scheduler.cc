@@ -131,6 +131,7 @@ DynamicBatchScheduler::Create(
     preferred_batch_sizes.insert(size);
   }
 
+  // 创建scheduler 对象
   DynamicBatchScheduler* dyna_sched = new DynamicBatchScheduler(
       model, model_instance, dynamic_batching_enabled, max_batch_size,
       enforce_equal_shape_tensors, batcher_config.preserve_ordering(),
@@ -142,6 +143,7 @@ DynamicBatchScheduler::Create(
 
   sched->scheduler_thread_exit_.store(false);
   if (dynamic_batching_enabled) {
+    // 如果开启了dynamic batch，则启动backthread来处理payload调度
     sched->NewPayload();
     sched->scheduler_thread_ =
         std::thread([dyna_sched, nice]() { dyna_sched->BatcherThread(nice); });
@@ -223,10 +225,11 @@ DynamicBatchScheduler::Enqueue(std::unique_ptr<InferenceRequest>& request)
     if (preserve_ordering_ || response_cache_enabled_) {
       DelegateResponse(request);
     }
-    // If not using dynamic batching, directly enqueue the
-    // request to model for execution
+    // If not using dynamic batching, directly enqueue the request to model for execution
+    // 这里通过get pay load是为了防止每次创建payload浪费时间
     auto payload = model_->Server()->GetRateLimiter()->GetPayload(
         Payload::Operation::INFER_RUN, nullptr /* TritonModelInstance*/);
+    // 对于不需要组合batch的场景，直接将一个request放到payload中
     payload->AddRequest(std::move(request));
     RETURN_IF_ERROR(
         model_->Server()->GetRateLimiter()->EnqueuePayload(model_, payload));
@@ -236,6 +239,7 @@ DynamicBatchScheduler::Enqueue(std::unique_ptr<InferenceRequest>& request)
     {
       std::lock_guard<std::mutex> lock(mu_);
 
+      // 计算有了多大batch size的数据
       queued_batch_size_ += std::max(1U, request->BatchSize());
 
       // Assuming no error is returned, this call takes ownership of
@@ -246,6 +250,7 @@ DynamicBatchScheduler::Enqueue(std::unique_ptr<InferenceRequest>& request)
       // equal to next preferred batch size, then wake batcher up to service
       // this request. We do the actual wake outside of the lock to avoid
       // having the woken thread immediately block on the lock
+      // 判断RateLimiter是否payloadqueue中与剩余空间？YTS:TODO
       wake_batcher =
           model_->Server()->GetRateLimiter()->PayloadSlotAvailable(model_);
 
@@ -355,12 +360,14 @@ DynamicBatchScheduler::BatcherThread(const int nice)
           }
 
           // Use dynamic batching to get request(s) to execute.
+          // 获取应该执行的batch大小
           wait_microseconds = GetDynamicBatch();
 
           // Get requests that are rejected from searching dynamic batch.
           queue_.ReleaseRejectedRequests(&rejected_requests);
 
           // Extract batch only if there is pending batch
+          // PendingBatchCount是如何计算的
           auto pending_batch_queue_cnt = queue_.PendingBatchCount();
           if ((wait_microseconds == 0) && (pending_batch_queue_cnt != 0)) {
             curr_payload_->ReserveRequests(pending_batch_queue_cnt);
@@ -405,6 +412,7 @@ DynamicBatchScheduler::BatcherThread(const int nice)
     }
 
     if (curr_payload_->GetState() == Payload::State::READY) {
+      // 发送给RateLimiter
       auto callback = [this]() { cv_.notify_one(); };
       curr_payload_->SetCallback(callback);
       model_->Server()->GetRateLimiter()->EnqueuePayload(model_, curr_payload_);

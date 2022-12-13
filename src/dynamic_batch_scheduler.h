@@ -122,6 +122,7 @@ class DynamicBatchScheduler : public Scheduler {
   // Map from priority level to queue holding inference requests for the model
   // represented by this scheduler. If priority queues are not supported by the
   // scheduler, then priority zero entry is used as the single queue.
+  // request的优先级queue，每个priority具有一个queue
   PriorityQueue queue_;
   bool stop_;
 

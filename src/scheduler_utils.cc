@@ -284,6 +284,7 @@ PriorityQueue::Enqueue(
   auto status = queues_[priority_level].Enqueue(request);
   if (status.IsOk()) {
     size_++;
+    // 每次入队重新设置level，也就是说只要最level高的，就会先处理高优先级情况
     front_priority_level_ = std::min(front_priority_level_, priority_level);
     // Invalidate the pending batch cursor if the enqueued item is placed
     // within the pending batch. At the same priority level the request is

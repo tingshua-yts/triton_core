@@ -299,12 +299,16 @@ class RateLimiter {
     {
       queue_.reset(new InstanceQueue(max_batch_size, max_queue_delay_ns));
     }
+    // InstanceQueue为存放payload的queue，核心成员为  std::deque<std::shared_ptr<Payload>> payload_queue_;
+    // 这里存储了所有没有指定model instance的payload
     std::unique_ptr<InstanceQueue> queue_;
-    std::map<const TritonModelInstance*, std::unique_ptr<InstanceQueue>>
-        specific_queues_;
+    // 这里存储了指定model instance的payload
+    std::map<const TritonModelInstance*, std::unique_ptr<InstanceQueue>> specific_queues_;
     std::mutex mu_;
     std::condition_variable cv_;
   };
+
+  //存放所有模型和其对应的payload queue，key为version+modename
   std::map<const TritonModel*, std::unique_ptr<PayloadQueue>> payload_queues_;
 };
 
